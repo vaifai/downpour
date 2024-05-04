@@ -1,6 +1,7 @@
 import * as dgram from 'dgram';
 import * as buffer from 'buffer';
 import * as url from 'url';
+import * as crypto from 'crypto';
 
 const Buffer = buffer.Buffer;
 const urlParse = url.parse;
@@ -8,8 +9,8 @@ const getPeers = (encodedTorrent, decodedTorrent, callback) => {
     const socket = dgram.createSocket('udp4');
     const filteredUrl = decodedTorrent.announce.toString('utf8');
     console.log(filteredUrl);
-    // 1. send connect request
-    // udpSend(socket, buildConnReq(), filteredUrl);
+
+    udpSend(socket, buildConnReq(), filteredUrl);
     //
     // socket.on('message', response => {
     //     if (respType(response) === 'connect') {
@@ -28,8 +29,9 @@ const getPeers = (encodedTorrent, decodedTorrent, callback) => {
 };
 
 function udpSend(socket, message, rawUrl, callback=()=>{}) {
-    const url = urlParse(rawUrl);
-    socket.send(message, 0, message.length, url.port, url.host, callback);
+    const parsedUrl = urlParse(rawUrl);
+    console.log(parsedUrl);
+    socket.send(message, 0, message.length, parsedUrl.port, parsedUrl.host, callback);
 }
 
 function respType(resp) {
@@ -37,7 +39,17 @@ function respType(resp) {
 }
 
 function buildConnReq() {
-    // ...
+    const buf = Buffer.alloc(16); // 2
+
+    // connection id
+    buf.writeUInt32BE(0x417, 0); // 3
+    buf.writeUInt32BE(0x27101980, 4);
+    // action
+    buf.writeUInt32BE(0, 8); // 4
+    // transaction id
+    crypto.randomBytes(4).copy(buf, 12); // 5
+
+    return buf;
 }
 
 function parseConnResp(resp) {
